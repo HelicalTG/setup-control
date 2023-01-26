@@ -2,11 +2,7 @@ from MultiVuDataFile import MultiVuDataFile as mvd
 from pymeasure.instruments.srs import SR830
 
 class Lockin(SR830):
-    def __init__(self, name, output):
-        self.name = name
-        self.output = mvd.MultiVuDataFile()
-    
-    def getConfig(self):
+    def _get_config(self):
         config = dict()
         config['Sine Out (V)'] = str(self.sine_voltage)
         config['Frequency (Hz)'] = str(self.frequency)
@@ -23,3 +19,9 @@ class Lockin(SR830):
         config['Reference Source'] = self.reference_source
         config['Reference Source Trigger'] = self.reference_source_trigger
         return config
+    
+    def getConfig(self, line_start='\n; ', sep='\n; '):
+        config_dict = self._get_config()
+        config = [f'{key}: {value}' for (key, value) in config_dict.items()]
+        config = line_start + 'Lock-in configuration: '
+        config += line_start + sep.join(config)

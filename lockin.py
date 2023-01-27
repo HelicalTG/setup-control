@@ -1,4 +1,3 @@
-from MultiVuDataFile import MultiVuDataFile as mvd
 from pymeasure.instruments.srs import SR830
 
 class Lockin(SR830):
@@ -20,8 +19,11 @@ class Lockin(SR830):
         config['Reference Source Trigger'] = self.reference_source_trigger
         return config
     
-    def getConfig(self, line_start='\n; ', sep='\n; '):
+    def getConfig(self, line_start='\n; ', sep='\n; ', addition = dict()):
         config_dict = self._get_config()
-        config = [f'{key}: {value}' for (key, value) in config_dict.items()]
+        if len(addition) > 0:
+            config_dict.update(addition)
+        config_list = [f'{key}: {value}' for (key, value) in config_dict.items()]
         config = line_start + 'Lock-in configuration: '
-        config += line_start + sep.join(config)
+        config += line_start + sep.join(config_list)
+        return config

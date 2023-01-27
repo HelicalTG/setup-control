@@ -6,7 +6,7 @@ class DynacoolClient(MultiVuClient):
         field_now, status_field = self.get_field()
         chamber = self.get_chamber()
         message = '\nDynacool status:\n'
-        message += f'Temp = {temp_now:10.2f} K\t {status_temp}\n'
+        message += f'Temp =  {temp_now:8.2f} K\t {status_temp}\n'
         message += f'Field = {field_now:8.2f} Oe\t {status_field:}\n'
         message += f'Chamber: {chamber}\n'
         print(message)
@@ -23,7 +23,7 @@ class DynacoolClient(MultiVuClient):
         self.set_temperature(temp, rate, mode)
      
     def setField(self, field, *, rate, mode='linear', driven_mode='driven'):
-        assert (abs(field)<=140000)
+        assert (abs(field) <= 140000)
         assert (0 < rate <= 150)
         if mode == 'linear':
             mode = self.field.approach_mode.linear
@@ -41,24 +41,27 @@ class DynacoolClient(MultiVuClient):
             raise Exception('Wrong driven mode')
         self.set_field(field, rate, mode, driven_mode)
         
-    def getTemperature(self):
+    @property
+    def temperature(self):
         return self.get_temperature()[0]
     
-    def getField(self):
+    @property
+    def field(self):
         return self.get_field()[0]
 
-    def waitFor(self, param: str, wait_timeout=0, delay_after=0):
+    def waitFor(self, param: str, wait_timeout=0, delay=0):
         if param == 'temperature':
-            system = self.subsystem.temperature
+            subsystem = self.subsystem.temperature
         elif param == 'field':
-            system = self.subsystem.field
+            subsystem = self.subsystem.field
         elif param == 'both':
-            system = self.subsystem.temperature | self.subsystem.field
+            subsystem = self.subsystem.temperature | self.subsystem.field
         else:
             raise Exception('Wrong parameter to wait for')
-        self.wait_for(delay_sec=delay_after, timeout_sec=wait_timeout, bitmask=system)
+        self.wait_for(delay_sec=delay, timeout_sec=wait_timeout, bitmask=subsystem)
         
 if __name__ == '__main__':
+    import time
     host = "127.0.0.1"
     port = 5000
     
@@ -67,13 +70,19 @@ if __name__ == '__main__':
     ppms.showStatus()
     
     ppms.setTemperature(285, rate=20)
+    time.sleep(0.5)
     print(f'Temperature = {ppms.getTemperature()} K')
+    time.sleep(0.5)
     ppms.waitFor('temperature')
+    time.sleep(0.5)
     print(f'Temperature = {ppms.getTemperature()} K')
     
     ppms.setField(100, rate=80)
+    time.sleep(0.5)
     print(f'Field = {ppms.getField()} Oe')
+    time.sleep(0.5)
     ppms.waitFor('field')
+    time.sleep(0.5)
     print(f'Field = {ppms.getField()} Oe')
     
     ppms.close_server()

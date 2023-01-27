@@ -23,6 +23,7 @@ class SetupManager():
     OUTPUT_COLUMNS = [temp_col, field_col, x_col, y_col, current_col, resis_col]
     
     def __init__(self, path, experiment_name, ext='dat'):
+        os.makedirs(path, exist_ok=True)
         self.path = path
         self.name = experiment_name
         self.ext = ext
@@ -112,7 +113,7 @@ class SetupManager():
             device.output.create_file_and_write_header(device.current_filename, new_title)
             
     def saveDatapoint(self, temperature, field):
-        # temperature = self.cryostat.temperature
+        # temperature = self.cryostat.temperature_getter
         # field = self.magnet.field
         for device in self.devices:
             x, y = device.instrument.snap()
@@ -131,12 +132,12 @@ class SetupManager():
     def _add_sweep_to_params(self, params: dict, sweep: str):
         params_new = {'labels':('sweep',), 'values':(sweep,)}
         if sweep == 'Temp':
-            field = '{:.2f}T'.format(self.cryostat.field)
+            field = '{:.2f}T'.format(self.cryostat.field_getter/10000)
             time.sleep(0.5)
             params_new['labels'] += ('H=',)
             params_new['values'] += (field,)
         elif sweep == 'Field':
-            temperature = '{:.1f}K'.format(self.cryostat.temperature)
+            temperature = '{:.1f}K'.format(self.cryostat.temperature_getter)
             time.sleep(0.5)
             params_new['labels'] += ('T=',)
             params_new['values'] += (temperature,) 
@@ -160,7 +161,7 @@ class SetupManager():
                          title='', insert_params={},
                          sleep_between=0.27, waiting_before=60, waiting_after=60):
         time.sleep(0.5)
-        temperature_now = self.cryostat.temperature
+        temperature_now = self.cryostat.temperature_getter
         time.sleep(0.5)
         sweep_description = 'temperature sweep from {:.1f} K to {:.1f} K'
         
@@ -174,7 +175,7 @@ class SetupManager():
                 time.sleep(0.5)
                 self.cryostat.waitFor('temperature', delay=waiting_before)
                 time.sleep(0.5)
-                temperature_now = self.cryostat.temperature
+                temperature_now = self.cryostat.temperature_getter
                 msg = self._start_msg()
                 msg += 'Initial temperature has reached'
                 print(msg)
@@ -192,11 +193,11 @@ class SetupManager():
         
         self.cryostat.setTemperature(end_temp, rate=rate_to_end, mode=mode)
         time.sleep(0.5)
-        temperature_now = self.cryostat.temperature
+        temperature_now = self.cryostat.temperature_getter
         # one loop takes approximately 60ms
         while not np.isclose(temperature_now, end_temp, atol=atol, rtol=rtol):
-            temperature_now = self.cryostat.temperature
-            field_now = self.cryostat.field
+            temperature_now = self.cryostat.temperature_getter
+            field_now = self.cryostat.field_getter
             self.saveDatapoint(temperature_now, field_now)
             time.sleep(sleep_between)
         msg_finish = self._start_msg() + 'Finish '
@@ -216,7 +217,7 @@ class SetupManager():
                    title='', insert_params={},
                    sleep_between=0.27, waiting_before=60, waiting_after=60):
         time.sleep(0.5)
-        field_now = self.cryostat.field
+        field_now = self.cryostat.field_getter
         time.sleep(0.5)
         sweep_description = 'field sweep from {:.0f} Oe to {:.0f} Oe'
         
@@ -231,7 +232,7 @@ class SetupManager():
                 time.sleep(0.5)
                 self.cryostat.waitFor('field', delay=waiting_before)
                 time.sleep(0.5)
-                field_now = self.cryostat.field
+                field_now = self.cryostat.field_getter
                 msg = self._start_msg()
                 msg += 'Initial field has reached'
                 print(msg)
@@ -251,10 +252,10 @@ class SetupManager():
         self.cryostat.setField(end_field, rate=rate_to_end,
                                mode=mode, driven_mode=driven_mode)
         time.sleep(0.5)
-        field_now = self.cryostat.field
+        field_now = self.cryostat.field_getter
         while not np.isclose(field_now, end_field, atol=atol, rtol=rtol):
-            temperature_now = self.cryostat.temperature
-            field_now = self.cryostat.field
+            temperature_now = self.cryostat.temperature_getter
+            field_now = self.cryostat.field_getter
             self.saveDatapoint(temperature_now, field_now)
             time.sleep(sleep_between)
         msg_finish = self._start_msg() + 'Finish '
@@ -281,8 +282,8 @@ class SetupManager():
             self.createFiles(title=title, insert_params=insert_params)
             
             while True:
-                field_now = self.cryostat.field
-                temperature_now = self.cryostat.temperature
+                field_now = self.cryostat.field_getter
+                temperature_now = self.cryostat.temperature_getter
                 self.saveDatapoint(temperature_now, field_now)
                 time.sleep(sleep_between)
         except KeyboardInterrupt:
@@ -296,31 +297,39 @@ class SetupManager():
             print(msg_finish + '\n')
     
     def _one_point_measurement(self, sleep_between=0.27):
-        field_now = self.cryostat.field
-        temperature_now = self.cryostat.temperature
+        field_now = self.cryostat.field_getter
+        temperature_now = self.cryostat.temperature_getter
         self.saveDatapoint(temperature_now, field_now)
         time.sleep(sleep_between)
            
     def _generate_points(self, N, *, sleep_between=0.27, title='test', insert_params):
         self.createFiles(title=title, insert_params=insert_params)
         for _ in range(N):
-            field_now = self.cryostat.field
-            temperature_now = self.cryostat.temperature
+            field_now = self.cryostat.field_getter
+            temperature_now = self.cryostat.temperature_getter
             self.saveDatapoint(temperature_now, field_now)
             time.sleep(sleep_between)
     
         
 if __name__ == '__main__':
     from dummies import DummyLockin, DummyDynacool
+    from dynacoolclient import DynacoolClient
     
-    path = r'D:'
+    measurements_path = r'C:\MeasurementData\Dynacool'
+    experiment_name = 'test_sample'
     
-    setup = SetupManager(path=path, experiment_name='test_sample')
+    host = "127.0.0.1"
+    port = 5000
+    
+    experiment_folder = os.path.join(measurements_path, experiment_name)
+    setup = SetupManager(path=experiment_folder, experiment_name=experiment_name)
+    
+    ppms = DynacoolClient(host=host, port=port)
+    ppms.open()
     lockin_xx = DummyLockin()
     lockin_xy = DummyLockin()
     lockin_xx2 = DummyLockin()
     lockin_xy2 = DummyLockin()
-    ppms = DummyDynacool()
     
     setup.addMeasuringDevices([lockin_xx, lockin_xy, lockin_xx2, lockin_xy2],
                               ['xx', 'xy', 'xx', 'xy'],
@@ -334,11 +343,11 @@ if __name__ == '__main__':
     # time.sleep(2)
     # setup._generate_points(30, insert_params=parameters)
     
-    setup.sweepTime(sleep_between=0.1)
-    setup.sweepTemperature(290, initial_temp=280,
-                           rate_to_end=60, rate_to_init=240, 
-                           waiting_after=1, waiting_before=5, sleep_between=0.1)
-    setup.sweepField(10000, initial_field=-10000,
-                     rate_to_end=2000, rate_to_init=2000,
-                     waiting_after=1, waiting_before=5, sleep_between=0.1)
+    # setup.sweepTime(sleep_between=0.33)
+    setup.sweepTemperature(290, initial_temp=300,
+                           rate_to_end=20, rate_to_init=20, 
+                           waiting_after=0, waiting_before=0, sleep_between=0.33)
+    # setup.sweepField(10000, initial_field=-10000,
+    #                  rate_to_end=80, rate_to_init=80,
+    #                  waiting_after=0, waiting_before=0, sleep_between=0.1)
     

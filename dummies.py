@@ -67,7 +67,7 @@ class DummyLockin():
     
     
 class DummyDynacool():
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self.current_temperature = 300
         self.current_field = 0
         
@@ -75,8 +75,24 @@ class DummyDynacool():
         self.temperature_rate = 0
         self.set_field = 0
         self.field_rate = 0
+        
+        self.is_connection_open = False
+    
+    def open(self):
+        self.is_connection_open = True
+
+    def _check_connection(self):
+        if not self.is_connection_open:
+            raise Exception('Connection to server is not open')
+    
+    def close_server(self):
+        self.is_connection_open = False
+        
+    def close_client(self):
+        self.is_connection_open = False
     
     def showStatus(self):
+        self._check_connection()
         temp_now, status_temp = self.get_temperature()
         field_now, status_field = self.get_field()
         chamber = self.get_chamber()
@@ -87,6 +103,7 @@ class DummyDynacool():
         print(message)
         
     def setTemperature(self, temp, *, rate, mode='fast settle'):
+        self._check_connection()
         if mode not in ['fast settle', 'no overshoot']:
             raise Exception('Wrong temperature approach mode')
         
@@ -99,6 +116,7 @@ class DummyDynacool():
         self.temp_timer = Timer()
         
     def setField(self, field, *, rate, mode='linear', driven_mode='driven'):
+        self._check_connection()
         if mode not in ['linear', 'no overshoot', 'oscillate']:
             raise Exception('Wrong field approach mode')
         if driven_mode not in ['driven', 'persistent']:
@@ -113,7 +131,8 @@ class DummyDynacool():
         self.field_timer = Timer()
         
     @property
-    def temperature(self):
+    def temperature_getter(self):
+        self._check_connection()
         try:
             delta_temp = self.temperature_rate/60*self.temp_timer.time
             if abs(delta_temp) < abs(self.set_temperature - self.current_temperature):
@@ -124,7 +143,8 @@ class DummyDynacool():
         return self.current_temperature
     
     @property
-    def field(self):
+    def field_getter(self):
+        self._check_connection()
         try:
             delta_field = self.field_rate*self.field_timer.time
             if abs(delta_field) < abs(self.set_field - self.current_field):
@@ -135,6 +155,7 @@ class DummyDynacool():
         return self.current_field
 
     def waitFor(self, param: str, wait_timeout=0, delay=0):
+        self._check_connection()
         if param not in ['temperature', 'field', 'both']:
             raise Exception('Wrong parameter to wait for')
         time.sleep(delay)

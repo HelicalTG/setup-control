@@ -42,12 +42,20 @@ class DynacoolClient(MultiVuClient):
         self.set_field(field, rate, mode, driven_mode)
         
     @property
-    def temperature(self):
+    def temperature_getter(self):
         return self.get_temperature()[0]
     
+    # @temperature.setter
+    # def temperature(self, value):
+    #     raise Exception('Use setTemperature() to change temperature')
+    
     @property
-    def field(self):
+    def field_getter(self):
         return self.get_field()[0]
+    
+    # @field.setter
+    # def field(self, value):
+    #     raise Exception('Use setField() temperature')
 
     def waitFor(self, param: str, wait_timeout=0, delay=0):
         if param == 'temperature':

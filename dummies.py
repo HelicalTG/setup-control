@@ -34,33 +34,6 @@ class DummyLockin():
         self.phase = phase
         self.x = x
         self.y = y
-        
-    def _get_config(self):
-        config = dict()
-        config['Sine Out (V)'] = str(self.sine_voltage)
-        config['Frequency (Hz)'] = str(self.frequency)
-        config['Phase (Deg)'] = str(self.phase)
-        config['Sensitivity (V)'] = str(self.sensitivity)
-        config['Time Constant (s)'] = str(self.time_constant)
-        config['Filter Slope (dB/oct)'] = str(self.filter_slope)
-        config['Filter Synchronous'] = str(self.filter_synchronous)
-        config['Input Config'] = self.input_config
-        config['Input Grounding'] = self.input_grounding
-        config['Input Coupling'] = self.input_coupling
-        config['Input Notch'] = self.input_notch_config
-        config['Input Reserve'] = self.reserve
-        config['Reference Source'] = self.reference_source
-        config['Reference Source Trigger'] = self.reference_source_trigger
-        return config
-    
-    def getConfig(self, line_start='\n; ', sep='\n; ', addition = dict()):
-        config_dict = self._get_config()
-        if len(addition) > 0:
-            config_dict.update(addition)
-        config_list = [f'{key}: {value}' for (key, value) in config_dict.items()]
-        config = line_start + 'Lock-in configuration: '
-        config += line_start + sep.join(config_list)
-        return config
     
     def snap(self):
         return (self.x, self.y)
@@ -78,24 +51,32 @@ class DummyDynacool():
         
         self.is_connection_open = False
     
+    def __enter__(self):
+        self.is_connection_open = True
+        return self
+        
+    def __exit__(self, *args, **kwargs):
+        self.is_connection_open = False
+        return False
+    
     def open(self):
         self.is_connection_open = True
 
+    def closeServer(self):
+        self.is_connection_open = False
+        
+    def closeClient(self):
+        self.is_connection_open = False
+        
     def _check_connection(self):
         if not self.is_connection_open:
             raise Exception('Connection to server is not open')
     
-    def close_server(self):
-        self.is_connection_open = False
-        
-    def close_client(self):
-        self.is_connection_open = False
-    
     def showStatus(self):
         self._check_connection()
-        temp_now, status_temp = self.get_temperature()
-        field_now, status_field = self.get_field()
-        chamber = self.get_chamber()
+        temp_now, status_temp = self.temperature, 'OK'
+        field_now, status_field = self.field, 'OK'
+        chamber = 'OK'
         message = '\nDynacool status:\n'
         message += f'Temp =  {temp_now:8.2f} K\t {status_temp}\n'
         message += f'Field = {field_now:8.2f} Oe\t {status_field:}\n'
@@ -131,7 +112,7 @@ class DummyDynacool():
         self.field_timer = Timer()
         
     @property
-    def temperature_getter(self):
+    def temperature(self):
         self._check_connection()
         try:
             delta_temp = self.temperature_rate/60*self.temp_timer.time
@@ -143,7 +124,7 @@ class DummyDynacool():
         return self.current_temperature
     
     @property
-    def field_getter(self):
+    def field(self):
         self._check_connection()
         try:
             delta_field = self.field_rate*self.field_timer.time
@@ -156,6 +137,16 @@ class DummyDynacool():
 
     def waitFor(self, param: str, wait_timeout=0, delay=0):
         self._check_connection()
-        if param not in ['temperature', 'field', 'both']:
+        if param == 'temperature':
+            while self.temperature != self.set_temperature:
+                time.sleep(1)
+        elif param == 'field':
+            while self.field != self.set_field:
+                time.sleep(1)
+        elif param == 'both':
+            while (self.temperature != self.set_temperature
+                   and self.field != self.set_field):
+                time.sleep(1)
+        else:
             raise Exception('Wrong parameter to wait for')
         time.sleep(delay)

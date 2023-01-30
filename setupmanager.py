@@ -350,6 +350,7 @@ class SetupManager():
         try:
             msg_start = self._start_msg() + 'Start '
             msg_start += sweep_description
+            msg_start += "\n\t\t\t     Press 'Ctrl+C' to stop the sweep"
             print(msg_start)
             
             if title == '':

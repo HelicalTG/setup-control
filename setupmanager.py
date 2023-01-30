@@ -440,6 +440,7 @@ class SetupManager():
 if __name__ == '__main__':
     from dummies import DummyLockin, DummyDynacool
     from dynacool import DynacoolCryostat
+    from pymeasure.instruments.srs import SR830
     
     measurements_path = r'C:\MeasurementData\Dynacool'
     experiment_name = 'test_sample'

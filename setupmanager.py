@@ -151,6 +151,8 @@ class SetupManager():
             device.output.add_multiple_columns(self.OUTPUT_COLUMNS)
     
     def createFiles(self, title: str, insert_params: dict, add_config=True, add_datetime=True):
+        if insert_params == {}:
+            insert_params = self.generateLabelsDict((), ())
         labels = ('R', 'cont') + insert_params['labels']
         template = self._add_labels_to_filename(self.name, labels)
         
@@ -374,13 +376,14 @@ class SetupManager():
             msg_finish += sweep_description
             print(msg_finish + '\n')
     
-    def _one_point_measurement(self, interval=0.27):
+    def _one_point_measurement(self, interval=0.27, title='', insert_params={}):
+        self.createFiles(title=title, insert_params=insert_params)
         field_now = self.cryostat.field
         temperature_now = self.cryostat.temperature
         self.saveDatapoint(temperature_now, field_now)
         time.sleep(interval)
            
-    def doNMeasurements(self, N, *, interval=0.27, title='N measurements', insert_params):
+    def doNMeasurements(self, N, *, interval=0.27, title='', insert_params={}):
         print()
         time.sleep(0.5)
         sweep_description = '{} measurements'
@@ -401,7 +404,34 @@ class SetupManager():
             
         msg_finish = self._start_msg() + 'Finish '
         msg_finish += sweep_description.format(N)
-        print(msg_finish + '\n')    
+        print(msg_finish + '\n')
+        
+    def measureForNSeconds(self, N, *, interval=0.27, title='', insert_params={}):
+        print()
+        time.sleep(0.5)
+        sweep_description = 'measurements for {} seconds'
+        
+        msg_start = self._start_msg() + 'Start '
+        msg_start += sweep_description.format(N)
+        print(msg_start)
+        
+        if title == '':
+            title = sweep_description.format(N)
+        self.createFiles(title=title, insert_params=insert_params)
+        
+        measurement_start = time.perf_counter()
+        while True:
+            field_now = self.cryostat.field
+            temperature_now = self.cryostat.temperature
+            self.saveDatapoint(temperature_now, field_now)
+            time.sleep(interval)
+            elapsed_time = time.perf_counter()
+            if elapsed_time - measurement_start >= N:
+                break
+            
+        msg_finish = self._start_msg() + 'Finish '
+        msg_finish += sweep_description.format(N)
+        print(msg_finish + '\n')   
             
     def sweepCurrent(self, final_current, *, initial_current=0, step=50e-9, interval=0.27,
                      title='', insert_params={}, set_zero=True):
@@ -452,6 +482,8 @@ if __name__ == '__main__':
     # with DynacoolCryostat(host=host, port=port) as ppms:
     # ppms = DummyDynacool(host=host, port=port)
     # ppms.open()
+        ppms.showStatus()
+    
         experiment_folder = os.path.join(measurements_path, experiment_name)
         setup = SetupManager(path=experiment_folder, experiment_name=experiment_name)
         
@@ -478,4 +510,5 @@ if __name__ == '__main__':
                          initial_field=-500, rate_to_initial=80,
                         waiting_after=0, waiting_before=0, interval=0.33)
         setup.sweepCurrent(final_current=2e-6, initial_current=-0.5e-6, interval=0.01)
+        setup.measureForNSeconds(10)
     # ppms.closeServer()

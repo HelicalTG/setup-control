@@ -2,7 +2,7 @@ from MultiPyVu import MultiVuClient as mvc
 
 class DynacoolCryostat():
     def __init__(self, *args, **kwargs):
-        self.dynacool = mvc.MultiVuClient(args, kwargs)
+        self.dynacool = mvc.MultiVuClient(*args, **kwargs)
     
     def __enter__(self):
         self.dynacool.__enter__()
@@ -59,7 +59,7 @@ class DynacoolCryostat():
             driven_mode = self.dynacool.field.driven_mode.persistent
         else:
             raise Exception('Wrong driven mode')
-        self.set_field(field, rate, mode, driven_mode)
+        self.dynacool.set_field(field, rate, mode, driven_mode)
         
     @property
     def temperature(self):
@@ -83,12 +83,12 @@ class DynacoolCryostat():
     # def field(self, value):
     #     raise Exception('Use setField() temperature')
 
-    def waitFor(self, param: str, wait_timeout=0, delay=0):
-        if param == 'temperature':
+    def waitFor(self, parameter: str, wait_timeout=0, delay=0):
+        if parameter == 'temperature':
             subsystem = self.dynacool.subsystem.temperature
-        elif param == 'field':
+        elif parameter == 'field':
             subsystem = self.dynacool.subsystem.field
-        elif param == 'both':
+        elif parameter == 'both':
             subsystem = self.dynacool.subsystem.temperature | self.dynacool.subsystem.field
         else:
             raise Exception('Wrong parameter to wait for')

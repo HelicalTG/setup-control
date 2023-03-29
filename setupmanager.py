@@ -11,9 +11,13 @@ class MeasuringDevice():
         self.instrument = instrument
         self.name = name
         self.contacts = contact_pair
+        self.x_col = f'X_{name}{contact_pair}'
+        self.y_col = f'Y_{name}{contact_pair}'
+        self.resis_col = f'R_{name}{contact_pair}'
 
 class CurrentSource():
     resistance = 0
+    
     @property
     def current(self):
         return self.instrument.sine_voltage/self.resistance
@@ -26,6 +30,7 @@ class CurrentSource():
         assert (resistance > 0)
         self.instrument = source
         self.resistance = resistance
+        
 
 class SetupManager():
     temp_col = 'Temperature (K)'
@@ -49,11 +54,10 @@ class SetupManager():
                 x, y = instrument.snap()
                 x + y
             except:
-                msg = 'ERROR!\n'
-                msg += f'Instrument name={name}; contacts={contact_pair}\n'
+                msg = f'Instrument name={name}; contacts={contact_pair}\n'
                 msg += 'The instrument either does not have a "snap" method'
                 msg += 'or returned result can not be unpacked correctly'
-                print(msg)
+                raise Exception(msg)
             instr = MeasuringDevice(instrument, name, contact_pair)
             self.devices.append(instr)
     
@@ -65,42 +69,44 @@ class SetupManager():
             self.current_source = CurrentSource(source, resistance)
         elif kind == 'current':
             self.current_source = source
+        else:
+            raise Exception('Wrong kind specified')
         
     def getCurrent(self):
         if hasattr(self, 'current_source'):
             return self.current_source.current
         else:
-            print('No current source has been added')
+            raise Exception('No current source has been added')
     
     def setCurrent(self, value):
         if hasattr(self, 'current_source'):
             self.current_source.current = value
         else:
-            print('No current source has been added')
+            raise Exception('No current source has been added')
         
     def getTemperature(self):
         if hasattr(self, 'cryostat'):
             return self.cryostat.temperature
         else:
-            print('No cryostat has been added')
+            raise Exception('No cryostat has been added')
     
     def setTemperature(self, *args, **kwargs):
         if hasattr(self, 'cryostat'):
             self.cryostat.setTemperature(args, kwargs)
         else:
-            print('No cryostat has been added')
+            raise Exception('No cryostat has been added')
             
     def getField(self):
         if hasattr(self, 'cryostat'):
             return self.cryostat.field
         else:
-            print('No cryostat has been added')
+            raise Exception('No cryostat has been added')
     
     def setField(self, *args, **kwargs):
         if hasattr(self, 'cryostat'):
             self.cryostat.setField(args, kwargs)
         else:
-            print('No cryostat has been added')
+            raise Exception ('No cryostat has been added')
     
     @staticmethod
     def _get_lockin_config(lockin):

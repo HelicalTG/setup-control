@@ -14,22 +14,6 @@ class MeasuringDevice():
         self.x_col = f'X_{name}{contact_pair}'
         self.y_col = f'Y_{name}{contact_pair}'
         self.resis_col = f'R_{name}{contact_pair}'
-
-class CurrentSource():
-    resistance = 0
-    
-    @property
-    def current(self):
-        return self.instrument.sine_voltage/self.resistance
-    
-    @current.setter
-    def current(self, value):
-        self.instrument.sine_voltage = value*self.resistance
-    
-    def __init__(self, source, resistance):
-        assert (resistance > 0)
-        self.instrument = source
-        self.resistance = resistance
         
 
 class SetupManager():
@@ -64,13 +48,8 @@ class SetupManager():
     def addCryostat(self, cryostat):
         self.cryostat = cryostat
             
-    def addCurrentSource(self, source, resistance=0, kind='voltage'):
-        if kind == 'voltage': 
-            self.current_source = CurrentSource(source, resistance)
-        elif kind == 'current':
+    def addCurrentSource(self, source):
             self.current_source = source
-        else:
-            raise Exception('Wrong kind specified')
         
     def getCurrent(self):
         if hasattr(self, 'current_source'):
@@ -477,6 +456,7 @@ if __name__ == '__main__':
     from dummies import DummyLockin, DummyDynacool
     from dynacool import DynacoolCryostat
     from pymeasure.instruments.srs import SR830
+    from lockin_source import SR830CurrentSource
     
     measurements_path = r'C:\MeasurementData\Dynacool'
     experiment_name = 'test_sample'
@@ -497,11 +477,12 @@ if __name__ == '__main__':
         lockin_xy = DummyLockin()
         lockin_xx2 = DummyLockin()
         lockin_xy2 = DummyLockin()
+        current_source = SR830CurrentSource(lockin_xx, 1_000_000)
         
         setup.addMeasuringDevices([lockin_xx, lockin_xy, lockin_xx2, lockin_xy2],
                                 ['xx', 'xy', 'xx', 'xy'],
                                 ['23', '26', '67', '37'])
-        setup.addCurrentSource(lockin_xx, 1_000_000)
+        setup.addCurrentSource(current_source)
         setup.addCryostat(ppms)
         
         parameters = setup.generateLabelsDict(('T=', 'H=', 'Deg='),

@@ -11,9 +11,36 @@ class MeasuringDevice():
         self.instrument = instrument
         self.name = name
         self.contacts = contact_pair
-        self.x_col = f'X_{name}{contact_pair}'
-        self.y_col = f'Y_{name}{contact_pair}'
-        self.resis_col = f'R_{name}{contact_pair}'
+        self.x_col = f'X_{name}{contact_pair} (V)'
+        self.y_col = f'Y_{name}{contact_pair} (V)'
+        self.resis_col = f'Resistance_{name}{contact_pair} (Ohms)'
+    
+    def _get_instrument_config(self):
+        config = dict()
+        config['Sine Out (V)'] = str(self.instrument.sine_voltage)
+        config['Frequency (Hz)'] = str(self.instrument.frequency)
+        config['Phase (Deg)'] = str(self.instrument.phase)
+        config['Sensitivity (V)'] = str(self.instrument.sensitivity)
+        config['Time Constant (s)'] = str(self.instrument.time_constant)
+        config['Filter Slope (dB/oct)'] = str(self.instrument.filter_slope)
+        config['Filter Synchronous'] = str(self.instrument.filter_synchronous)
+        config['Input Config'] = self.instrument.input_config
+        config['Input Grounding'] = self.instrument.input_grounding
+        config['Input Coupling'] = self.instrument.input_coupling
+        config['Input Notch'] = self.instrument.input_notch_config
+        config['Input Reserve'] = self.instrument.reserve
+        config['Reference Source'] = self.instrument.reference_source
+        config['Reference Source Trigger'] = self.instrument.reference_source_trigger
+        return config
+    
+    def getInstrumentConfig(self, line_start='\n; ', sep='\n; ', addition = dict()):
+        config_dict = self._get_instrument_config()
+        if len(addition) > 0:
+            config_dict.update(addition)
+        config_list = [f'{key}: {value}' for (key, value) in config_dict.items()]
+        config = line_start + 'Lock-in configuration: '
+        config += line_start + sep.join(config_list)
+        return config
         
 
 class SetupManager():
@@ -88,35 +115,6 @@ class SetupManager():
             raise Exception ('No cryostat has been added')
     
     @staticmethod
-    def _get_lockin_config(lockin):
-        config = dict()
-        config['Sine Out (V)'] = str(lockin.sine_voltage)
-        config['Frequency (Hz)'] = str(lockin.frequency)
-        config['Phase (Deg)'] = str(lockin.phase)
-        config['Sensitivity (V)'] = str(lockin.sensitivity)
-        config['Time Constant (s)'] = str(lockin.time_constant)
-        config['Filter Slope (dB/oct)'] = str(lockin.filter_slope)
-        config['Filter Synchronous'] = str(lockin.filter_synchronous)
-        config['Input Config'] = lockin.input_config
-        config['Input Grounding'] = lockin.input_grounding
-        config['Input Coupling'] = lockin.input_coupling
-        config['Input Notch'] = lockin.input_notch_config
-        config['Input Reserve'] = lockin.reserve
-        config['Reference Source'] = lockin.reference_source
-        config['Reference Source Trigger'] = lockin.reference_source_trigger
-        return config
-    
-    @classmethod
-    def getLockinConfig(cls, lockin, line_start='\n; ', sep='\n; ', addition = dict()):
-        config_dict = cls._get_lockin_config(lockin)
-        if len(addition) > 0:
-            config_dict.update(addition)
-        config_list = [f'{key}: {value}' for (key, value) in config_dict.items()]
-        config = line_start + 'Lock-in configuration: '
-        config += line_start + sep.join(config_list)
-        return config
-    
-    @staticmethod
     def generateLabelsDict(labels, values):
         parameters = dict()
         parameters['labels'] = labels
@@ -135,7 +133,7 @@ class SetupManager():
             device.output = mvd.MultiVuDataFile()
             device.output.add_multiple_columns(self.OUTPUT_COLUMNS)
     
-    def createFiles(self, title: str, insert_params: dict, add_config=True, add_datetime=True):
+    def create_output_files(self, title: str, insert_params: dict, add_config=True, add_datetime=True):
         if insert_params == {}:
             insert_params = self.generateLabelsDict((), ())
         labels = ('R', 'cont') + insert_params['labels']
@@ -156,7 +154,7 @@ class SetupManager():
                     additional_params['Source Resistance (Ohms)'] = self.current_source.resistance
                 except: pass
                 additional_params['Source Current (A)'] = self.current_source.current
-                device_info = self.getLockinConfig(device.instrument, addition=additional_params)
+                device_info = self.getInstrumentConfig(addition=additional_params)
                 new_title = title + device_info
             else:
                 new_title = title
@@ -165,7 +163,7 @@ class SetupManager():
             print(filename)
             device.output.create_file_and_write_header(device.current_filename, new_title)
             
-    def saveDatapoint(self, temperature, field):
+    def save_datapoint(self, temperature, field):
         current = self.current_source.current
         for device in self.devices:
             x, y = device.instrument.snap()
@@ -248,7 +246,7 @@ class SetupManager():
         if title == '':
             title = sweep_description.format(initial_temperature, final_temperature)
         insert_params = self._add_sweep_to_params(insert_params, sweep='Temp')
-        self.createFiles(title=title, insert_params=insert_params)
+        self.create_output_files(title=title, insert_params=insert_params)
         
         self.cryostat.setTemperature(final_temperature, rate=rate_to_final, mode=mode)
         time.sleep(0.5)
@@ -257,7 +255,7 @@ class SetupManager():
         while not np.isclose(temperature_now, final_temperature, atol=atol, rtol=rtol):
             temperature_now = self.cryostat.temperature
             field_now = self.cryostat.field
-            self.saveDatapoint(temperature_now, field_now)
+            self.save_datapoint(temperature_now, field_now)
             time.sleep(interval)
             
         msg_finish = self._start_msg() + 'Finish '
@@ -308,7 +306,7 @@ class SetupManager():
         if title == '':
             title = sweep_description.format(initial_field, final_field)
         insert_params = self._add_sweep_to_params(insert_params, sweep='Field')
-        self.createFiles(title=title, insert_params=insert_params)
+        self.create_output_files(title=title, insert_params=insert_params)
         
         self.cryostat.setField(final_field, rate=rate_to_final,
                                mode=mode, driven_mode=driven_mode)
@@ -317,7 +315,7 @@ class SetupManager():
         while not np.isclose(field_now, final_field, atol=atol, rtol=rtol):
             temperature_now = self.cryostat.temperature
             field_now = self.cryostat.field
-            self.saveDatapoint(temperature_now, field_now)
+            self.save_datapoint(temperature_now, field_now)
             time.sleep(interval)
             
         msg_finish = self._start_msg() + 'Finish '
@@ -343,12 +341,12 @@ class SetupManager():
             if title == '':
                 title = sweep_description
             insert_params = self._add_sweep_to_params(insert_params, sweep='Time')
-            self.createFiles(title=title, insert_params=insert_params)
+            self.create_output_files(title=title, insert_params=insert_params)
             
             while True:
                 field_now = self.cryostat.field
                 temperature_now = self.cryostat.temperature
-                self.saveDatapoint(temperature_now, field_now)
+                self.save_datapoint(temperature_now, field_now)
                 time.sleep(interval)
                 
         except KeyboardInterrupt:
@@ -362,10 +360,10 @@ class SetupManager():
             print(msg_finish + '\n')
     
     def _one_point_measurement(self, interval=0.27, title='', insert_params={}):
-        self.createFiles(title=title, insert_params=insert_params)
+        self.create_output_files(title=title, insert_params=insert_params)
         field_now = self.cryostat.field
         temperature_now = self.cryostat.temperature
-        self.saveDatapoint(temperature_now, field_now)
+        self.save_datapoint(temperature_now, field_now)
         time.sleep(interval)
            
     def doNMeasurements(self, N, *, interval=0.27, title='', insert_params={}):
@@ -379,12 +377,12 @@ class SetupManager():
         
         if title == '':
             title = sweep_description.format(N)
-        self.createFiles(title=title, insert_params=insert_params)
+        self.create_output_files(title=title, insert_params=insert_params)
         
         for _ in range(N):
             field_now = self.cryostat.field
             temperature_now = self.cryostat.temperature
-            self.saveDatapoint(temperature_now, field_now)
+            self.save_datapoint(temperature_now, field_now)
             time.sleep(interval)
             
         msg_finish = self._start_msg() + 'Finish '
@@ -402,13 +400,13 @@ class SetupManager():
         
         if title == '':
             title = sweep_description.format(N)
-        self.createFiles(title=title, insert_params=insert_params)
+        self.create_output_files(title=title, insert_params=insert_params)
         
         measurement_start = time.perf_counter()
         while True:
             field_now = self.cryostat.field
             temperature_now = self.cryostat.temperature
-            self.saveDatapoint(temperature_now, field_now)
+            self.save_datapoint(temperature_now, field_now)
             time.sleep(interval)
             elapsed_time = time.perf_counter()
             if elapsed_time - measurement_start >= N:
@@ -430,7 +428,7 @@ class SetupManager():
         if title == '':
             title = sweep_description.format(initial_current, final_current)
         insert_params = self._add_sweep_to_params(insert_params, sweep='Current')
-        self.createFiles(title=title, insert_params=insert_params)
+        self.create_output_files(title=title, insert_params=insert_params)
         
         field_now = self.cryostat.field
         temperature_now = self.cryostat.temperature
@@ -438,7 +436,7 @@ class SetupManager():
         
         for current in current_range:
             self.current_source.current = current
-            self.saveDatapoint(temperature_now, field_now)
+            self.save_datapoint(temperature_now, field_now)
             time.sleep(interval)
         msg_finish = self._start_msg() + 'Finish '
         msg_finish += sweep_description.format(initial_current, final_current)

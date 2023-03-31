@@ -9,7 +9,7 @@ class DynacoolCryostat():
         return self
     
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        exit_without_error = self.dynacool.__exit__(self, exc_type, exc_value, exc_traceback)
+        exit_without_error = self.dynacool.__exit__(exc_type, exc_value, exc_traceback)
         return exit_without_error
     
     def open(self):

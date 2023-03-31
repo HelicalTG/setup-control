@@ -35,15 +35,16 @@ class DynacoolDLL:
             remote, ip_address, port)
 
     def showStatus(self):
-        print(self.getTemperature())
-        print(self.getField())
-        print(self.getPosition())
-        print(self.getChamber())
-        message = '\nDynacool status:\n' + '-'*30 + '\n'
-        message += f'{"Temperature":<12} {self.temperature:>12.2f} K\n'
-        message += f'{"Field":<12} {self.field:>12.2f} Oe\n'
-        message += f'{"Position":<12} {self.position:>12.2f} Deg\n'
-        # message += f'Chamber: {chamber}\n'
+        temp_now, status_temp = self.getTemperature()
+        field_now, status_field = self.getField()
+        pos_now, status_pos = self.getPosition()
+        status_chamber = self.getChamber()
+
+        message = '\nDynacool status:\n' + '-'*50 + '\n'
+        message += f'{"Temperature":<12} {temp_now:>12.2f} K\t {status_temp}\n'
+        message += f'{"Field":<12} {field_now:>12.2f} Oe\t {status_field}\n'
+        message += f'{"Position":<12} {pos_now:>12.2f} Deg\t {status_pos}\n'
+        message += f'{"Chamber":<12} {status_chamber:>12}\n'
         print(message)
     
     def getTemperature(self):
@@ -53,8 +54,7 @@ class DynacoolDLL:
         GetTemperature(ref double Temperature, ref QDInstrumentBase.TemperatureStatus Status)
         """
         answer = self.dynacool.GetTemperature(0, TemperatureStatus(0))
-        status = int(answer[2])
-        return (*answer[:2], status)
+        return (answer[1], answer[2].ToString()) # # (value, status)
 
     def setTemperature(self, temperature, *, rate, approach='fast settle'):
         """Ramps the instrument temperature to the set point.
@@ -85,8 +85,7 @@ class DynacoolDLL:
         :return: Field in Gauss.
         """
         answer = self.dynacool.GetField(0, FieldStatus(0))
-        status = int(answer[2])
-        return (*answer[:2], status)
+        return (answer[1], answer[2].ToString()) # (value, status)
 
     def setField(self, field, *, rate, approach='linear', mode='driven'):
         """Ramps the instrument magnetic field to the set point.
@@ -126,8 +125,7 @@ class DynacoolDLL:
         observed in the WaitConditionReached function.
         """
         answer = self.dynacool.GetPosition("Horizontal Rotator", 0, PositionStatus(0))
-        status = int(answer[2])
-        return (*answer[:2], status)
+        return (answer[1], answer[2].ToString()) # (value, status)
 
     def setPosition(self, position, speed):
         """Ramps the instrument position to the set point.
@@ -142,8 +140,7 @@ class DynacoolDLL:
 
     def getChamber(self):
         answer = self.dynacool.GetChamber(ChamberStatus(0))
-        status = int(answer[1])
-        return (*answer[:1], status)
+        return answer[1].ToString() # status
     
     def waitFor(self, parameters, delay=5, timeout=600):        
         """
@@ -183,5 +180,5 @@ class DynacoolDLL:
 if __name__ == '__main__':
     dyna = DynacoolDLL('127.0.0.1', remote=False)
     dyna.showStatus()
-    dyna.setTemperature(280, rate=10)
+    # dyna.setTemperature(280, rate=10)
     # print(dyna.getTemperature()[1])

@@ -1,3 +1,3 @@
 # Compiled files
 __pycache__/
-QDInstrument.dll
+QDInstrument*.dll

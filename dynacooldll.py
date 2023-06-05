@@ -54,6 +54,7 @@ class DynacoolDLL:
         GetTemperature(ref double Temperature, ref QDInstrumentBase.TemperatureStatus Status)
         """
         answer = self.dynacool.GetTemperature(0, TemperatureStatus(0))
+        # print(type(answer[2]))
         return (answer[1], answer[2].ToString()) # # (value, status)
 
     def setTemperature(self, temperature, *, rate, approach='fast settle'):
@@ -127,7 +128,7 @@ class DynacoolDLL:
         answer = self.dynacool.GetPosition("Horizontal Rotator", 0, PositionStatus(0))
         return (answer[1], answer[2].ToString()) # (value, status)
 
-    def setPosition(self, position, speed):
+    def setPosition(self, position, *, speed):
         """Ramps the instrument position to the set point.
 
         Parameters are from:
@@ -136,7 +137,7 @@ class DynacoolDLL:
         :param position: Position on the rotator to move to.
         :param speed: Rate of change of position on the rotator.
         """
-        return self.dynacool.SetPosition("Horizontal Rotator", position, speed, PositionStatus(0))
+        return self.dynacool.SetPosition("Horizontal Rotator", position, speed, PositionMode(0))
 
     def getChamber(self):
         answer = self.dynacool.GetChamber(ChamberStatus(0))
@@ -158,7 +159,7 @@ class DynacoolDLL:
                 raise Exception(f'Unknown {param} parameter')
             
         bool_key = [False, False, False, False]
-        for (i, subsystem) in subsystems:
+        for (i, subsystem) in enumerate(subsystems):
             if subsystem in parameters:
                 bool_key[i] = True
         
@@ -178,7 +179,11 @@ class DynacoolDLL:
     
     
 if __name__ == '__main__':
+    import time
     dyna = DynacoolDLL('127.0.0.1', remote=False)
     dyna.showStatus()
     # dyna.setTemperature(280, rate=10)
-    # print(dyna.getTemperature()[1])
+    # print(FieldStatusString(QDInstrumentBase.FieldStatus(0)))
+    # dyna.setPosition(80, speed=3.5)
+    # time.sleep(40)
+    # dyna.showStatus()

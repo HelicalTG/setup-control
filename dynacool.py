@@ -31,35 +31,35 @@ class DynacoolCryostat():
         message += f'Chamber: {chamber}\n'
         print(message)
         
-    def setTemperature(self, temperature, *, rate, mode='fast settle'):
+    def setTemperature(self, temperature, *, rate=3, approach='fast settle'):
         assert (1.8 <= temperature <= 400)
         assert ( 0 < rate <= 20)
-        if mode == 'fast settle':
-            mode = self.dynacool.temperature.approach_mode.fast_settle
-        elif mode == 'no overshoot':
-            mode = self.dynacool.temperature.approach_mode.no_overshoot
+        if approach == 'fast settle':
+            approach = self.dynacool.temperature.approach_mode.fast_settle
+        elif approach == 'no overshoot':
+            approach = self.dynacool.temperature.approach_mode.no_overshoot
         else:
             raise Exception('Wrong temperature approach mode')
-        self.dynacool.set_temperature(temperature, rate, mode)
+        self.dynacool.set_temperature(temperature, rate, approach)
      
-    def setField(self, field, *, rate, mode='linear', driven_mode='driven'):
+    def setField(self, field, *, rate=80, approach='linear', mode='driven'):
         assert (abs(field) <= 140000)
         assert (0 < rate <= 150)
-        if mode == 'linear':
-            mode = self.dynacool.field.approach_mode.linear
-        elif mode == 'no overshoot':
-            mode = self.dynacool.field.approach_mode.no_overshoot
-        elif mode == 'oscillate':
-            mode = self.dynacool.field.approach_mode.oscillate
+        if approach == 'linear':
+            approach = self.dynacool.field.approach_mode.linear
+        elif approach == 'no overshoot':
+            approach = self.dynacool.field.approach_mode.no_overshoot
+        elif approach == 'oscillate':
+            approach = self.dynacool.field.approach_mode.oscillate
         else:
             raise Exception('Wrong field approach mode')
-        if driven_mode == 'driven':
-            driven_mode = self.dynacool.field.driven_mode.driven
-        elif driven_mode == 'persistent':
-            driven_mode = self.dynacool.field.driven_mode.persistent
+        if mode == 'driven':
+            mode = self.dynacool.field.driven_mode.driven
+        elif mode == 'persistent':
+            mode = self.dynacool.field.driven_mode.persistent
         else:
             raise Exception('Wrong driven mode')
-        self.dynacool.set_field(field, rate, mode, driven_mode)
+        self.dynacool.set_field(field, rate, approach, mode)
         
     @property
     def temperature(self):
@@ -83,7 +83,7 @@ class DynacoolCryostat():
     # def field(self, value):
     #     raise Exception('Use setField() temperature')
 
-    def waitFor(self, parameter: str, wait_timeout=0, delay=0):
+    def waitFor(self, parameter: str, delay=0, timeout=0):
         if parameter == 'temperature':
             subsystem = self.dynacool.subsystem.temperature
         elif parameter == 'field':
@@ -92,7 +92,7 @@ class DynacoolCryostat():
             subsystem = self.dynacool.subsystem.temperature | self.dynacool.subsystem.field
         else:
             raise Exception('Wrong parameter to wait for')
-        self.dynacool.wait_for(delay_sec=delay, timeout_sec=wait_timeout, bitmask=subsystem)
+        self.dynacool.wait_for(delay_sec=delay, timeout_sec=timeout, bitmask=subsystem)
         
 if __name__ == '__main__':
     import time
